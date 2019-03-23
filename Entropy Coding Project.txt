@@ -1,0 +1,1013 @@
+// This file includes the code in the lossless data compression (entropy coding) project. The project is written in C++,
+// consisting of an implementation of binary tree data structure, a symbol loading and sorting module, Shannon-Fano encoder
+// and decoder, Huffman encoder and decoder, and the main function.
+
+// The files for testing are not included here, but you can use any .dat file to test the encoders and decoders
+
+
+/*--------------------main function-------------------*/
+#include"SymbolVector.h"
+#include"BinaryTree.h"
+#include"ShannonFanoEncoder.h"
+#include"ShannonFanoDecoder.h"
+#include"HuffmanEncoder.h"
+#include"HuffmanDecoder.h"
+using namespace std;
+
+int main()
+{
+	/* Shannon-Fano */
+	/* Since the decoder is derived form the encoder,
+	we can use decoder object to do both encoding and
+	decoding jobs */
+	ShannonFanoDecoder sf_aud, sf_bin, sf_img, sf_txt;
+	string sfEncodedFile_aud = "audio_sfEncoded.dat",
+		sfEncodedFile_bin = "binary_sfEncoded.dat",
+		sfEncodedFile_img = "image_sfEncoded.dat",
+		sfEncodedFile_txt = "text_sfEncoded.dat";
+	string sfDecodedFile_aud = "audio_sfDecoded.dat",
+		sfDecodedFile_bin = "binary_sfDecoded.dat",
+		sfDecodedFile_img = "image_sfDecoded.dat",
+		sfDecodedFile_txt = "text_sfDecoded.dat";
+	string sfCodeTable_aud = "CodeTable_audio_SF.dat",
+		sfCodeTable_bin = "CodeTable_bin_SF.dat",
+		sfCodeTable_img = "CodeTable_img_SF.dat",
+		sfCodeTable_txt = "CodeTable_txt_SF.dat";
+	
+	/* audio */
+	sf_aud.loadRawData("audio.dat");
+	sf_aud.findUnique();
+	cout << "The entropy of the audio file is "
+		 << sf_aud.computeEnt() << " bits/symbol." << endl;
+	sf_aud.sortSymbolDescend();
+	sf_aud.buildSFTree(0, sf_aud.getNumUnique(), 1, 1);
+	sf_aud.encodeSF();
+	sf_aud.outputSFEncodedFile(sfEncodedFile_aud);
+	sf_aud.outputSFCodeTable(sfCodeTable_aud);
+	sf_aud.outputSFDecodedFile(sfEncodedFile_aud, sfDecodedFile_aud);
+
+	sf_bin.loadRawData("binary.dat");
+	sf_bin.findUnique();
+	cout << "The entropy of the binary file is "
+		<< sf_bin.computeEnt() << " bits/symbol." << endl;
+	sf_bin.sortSymbolDescend();
+	sf_bin.buildSFTree(0, sf_bin.getNumUnique(), 1, 1);
+	sf_bin.encodeSF();
+	sf_bin.outputSFEncodedFile(sfEncodedFile_bin);
+	sf_bin.outputSFDecodedFile(sfEncodedFile_bin, sfDecodedFile_bin);
+
+	sf_img.loadRawData("image.dat");
+	sf_img.findUnique();
+	cout << "The entropy of the image file is "
+		<< sf_img.computeEnt() << " bits/symbol." << endl;
+	sf_img.sortSymbolDescend();
+	sf_img.buildSFTree(0, sf_img.getNumUnique(), 1, 1);
+	sf_img.encodeSF();
+	sf_img.outputSFEncodedFile(sfEncodedFile_img);
+
+	sf_txt.loadRawData("text.dat");
+	sf_txt.findUnique();
+	cout << "There are totally " << sf_txt.getNumTotal() << " characters in the file." << endl;
+	cout << "The entropy of the text file is "
+		<< sf_txt.computeEnt() << " bits/symbol." << endl;
+	sf_txt.sortSymbolDescend();
+	cout << "The symbols in frequency descending order:" << endl;
+	sf_txt.listSortedDescend();
+	cout << "There are totally " << sf_txt.getNumUnique() << " unique characters in the file." << endl;
+	sf_txt.buildSFTree(0, sf_txt.getNumUnique(), 1, 1);
+	sf_txt.encodeSF();
+	cout << "Binary codes:" << endl;
+	sf_txt.printSFCode();
+	cout << "The avg code length is " << sf_txt.computeAvgLength() << " bits/symbol." << endl;
+	sf_txt.outputSFEncodedFile(sfEncodedFile_txt);
+	sf_txt.outputSFDecodedFile(sfEncodedFile_txt, sfDecodedFile_txt);
+
+	HuffmanDecoder hm_aud, hm_bin, hm_img, hm_txt;
+	string hmEncodedFile_aud = "audio_hmEncoded.dat",
+		hmEncodedFile_bin = "binary_hmEncoded.dat",
+		hmEncodedFile_img = "image_hmEncoded.dat",
+		hmEncodedFile_txt = "text_hmEncoded.dat";
+	string hmDecodedFile_txt = "text_hmDecoded.dat";
+
+	/* Huffman object */
+	hm_aud.loadRawData("audio.dat");
+	hm_aud.findUnique();
+	hm_aud.sortSymbolAscend();
+	hm_aud.initialActiveList();
+	hm_aud.buildHMTree();
+	hm_aud.encodeHM();
+	hm_aud.outputHMEncodedFile(hmEncodedFile_aud);
+
+	hm_bin.loadRawData("binary.dat");
+	hm_bin.findUnique();
+	hm_bin.sortSymbolAscend();
+	hm_bin.initialActiveList();
+	hm_bin.buildHMTree();
+	hm_bin.encodeHM();
+	hm_bin.outputHMEncodedFile(hmEncodedFile_bin);
+
+	hm_img.loadRawData("image.dat");
+	hm_img.findUnique();
+	hm_img.sortSymbolAscend();
+	hm_img.initialActiveList();
+	hm_img.buildHMTree();
+	hm_img.encodeHM();
+	hm_img.outputHMEncodedFile(hmEncodedFile_img);
+
+	hm_txt.loadRawData("text.dat");
+	hm_txt.findUnique();
+	hm_txt.sortSymbolAscend();
+	hm_txt.listSortedAscend();
+	hm_txt.initialActiveList();
+	// hm_txt.printActiveList();
+	hm_txt.buildHMTree();
+	hm_txt.encodeHM();
+	cout << "Huffman code:" << endl;
+	hm_txt.printHMCode();
+	cout << "The avg code length is " << hm_txt.computeAvgLength() << " bits/symbol." << endl;
+	hm_txt.outputHMEncodedFile(hmEncodedFile_txt);
+	hm_txt.outputHMDecodedFile(hmEncodedFile_txt, hmDecodedFile_txt);
+
+	return 0;
+}
+
+
+/*--------------------binary tree header--------------------*/
+#ifndef BINARYTREE_H
+#define BINARYTREE_H
+
+// #include"SymbolVector.h"
+#include<vector>
+#include<bitset>
+using std::vector;
+using std::bitset;
+
+typedef struct treeNode {
+	int index;				// the index of the node in the tree
+	unsigned char attribute;// the attribute (symbol) of the node
+	float relativeFreq;
+	bool isLeaf;			// whether the node is a leaf node
+	treeNode* left_child;
+	treeNode* right_child;
+	treeNode* parent;
+	treeNode(int idx, unsigned char att, float freq, treeNode* left, treeNode* right, treeNode* prt, bool l) :
+		index(idx), attribute(att), relativeFreq(freq),
+		left_child(left), right_child(right), parent(prt), isLeaf(l) {}
+	treeNode(int idx, unsigned char att, float freq, treeNode* left, treeNode* right, treeNode* prt) :
+		index(idx), attribute(att), relativeFreq(freq),
+		left_child(left), right_child(right), parent(prt) {}
+	treeNode(int idx, unsigned char att, treeNode* left, treeNode* right, treeNode* prt) :
+		index(idx), attribute(att), left_child(left), right_child(right), parent(prt) {}
+	treeNode(unsigned char att, float freq, treeNode* left, treeNode* right, treeNode* prt) :
+		attribute(att), relativeFreq(freq), left_child(left), right_child(right), parent(prt) {}
+	treeNode(unsigned char att, float freq, bool l) : attribute(att), relativeFreq(freq), isLeaf(l) {}
+}*Node;
+
+class BinaryTree
+{
+protected:
+	vector<Node> nodeVector;	// binary tree stored in vector
+	Node nodeList;				// binary tree stored in list
+public:
+	BinaryTree() { 
+		// nodeVector.push_back(new treeNode(1, '\0', 1, 0, 0, 0));
+		// nodeList = new treeNode(0, '\0', 1, 0, 0, 0);
+	}
+	void splitNode(int);
+	void assignValue(int, unsigned char, float);
+	int getLength();
+	void getNode(int);
+	void printTree();
+	Node mergeNode(Node&, Node&);
+};
+
+
+#endif	// BINARYTREE_H
+
+
+/*---------------------binary tree implementation--------------------*/
+#include"BinaryTree.h"
+#include<iostream>
+using std::cout;
+using std::endl;
+
+void BinaryTree::splitNode(int n)
+{
+	for (int i = nodeVector.size() + 1; i <= 2 * n + 1; ++i) {
+		nodeVector.push_back(new treeNode(i, '\0', 0, 0, 0));
+	}
+	for (int i = 0; i <= n - 1; ++i) {
+		nodeVector[i]->left_child = nodeVector[2 * i + 1];
+		nodeVector[i]->right_child = nodeVector[2 * i + 2];
+	}
+}
+
+void BinaryTree::assignValue(int n, unsigned char att, float freq)
+{
+	nodeVector[n - 1]->attribute = att;
+	nodeVector[n - 1]->relativeFreq = freq;
+}
+
+int BinaryTree::getLength()
+{
+	return nodeVector.size();
+}
+
+void BinaryTree::getNode(int n)
+{
+	cout << nodeVector[n - 1]->index << '\t' << nodeVector[n - 1]->attribute <<
+		'\t' << nodeVector[n - 1]->relativeFreq << endl;
+}
+
+void BinaryTree::printTree()
+{
+	for (int i = 0; i < nodeVector.size(); ++i) {
+		if (nodeVector[i]->attribute != '\0') {
+			cout << nodeVector[i]->index << '\t' << nodeVector[i]->attribute
+				<< '\t' << nodeVector[i]->relativeFreq << endl;
+		}
+	}
+}
+
+Node BinaryTree::mergeNode(Node& node_a, Node& node_b)
+{
+	Node newParent = new treeNode(0, '\0', node_a->relativeFreq + node_b->relativeFreq,
+		node_a, node_b, 0, false);
+	node_a->parent = newParent;
+	node_b->parent = newParent;
+	return newParent;
+}
+
+
+/*--------------------symbol vector header--------------------*/
+// for importing and sorting all the symbols in the files to be compressed
+#ifndef SYMBOLVECTOR_H
+#define SYMBOLVECTOR_H
+
+#include<vector>
+#include<fstream>
+#include<string>
+using std::vector;
+using std::ifstream;
+using std::string;
+
+typedef struct Symbol {
+	Symbol() : value('\0'), count(0), relativeFreq(0) {}
+	Symbol(unsigned char v, int c, float f, bool h) :
+		value(v), count(c), relativeFreq(f), isHead(h) {}
+	unsigned char value;	// what the symbol is
+	int count;				// the number of occurrence in the file
+	float relativeFreq;		// the global relative frequency
+	bool isHead;			// whether it is a "head" Symbol in the symbol vector
+}*Sym;
+
+class SymbolVector
+{
+protected:
+	ifstream inFile;				// read data file
+	vector<Sym> symbol_in_data;		// store unique symbols in the file
+	vector<Sym> sortedSymbolDescend;// store the sorted symbols (in freq. descending order)
+	vector<Sym> sortedSymbolAscend;	// store the sorted symbols (in freq. ascending order)
+	vector<unsigned char> rawData;	// store the raw data
+	void computeFreq() {
+		for (int i = 1; i < symbol_in_data.size(); ++i)
+			symbol_in_data[i]->relativeFreq = symbol_in_data[i]->count / float(this->getNumTotal());
+	}
+public:
+	SymbolVector() { symbol_in_data.push_back(new Symbol('\0', 0, 0, true)); }
+	int getNumUnique();
+	int getNumTotal();
+	void loadRawData(string fileName);
+	void printFile();
+	void findUnique();
+	void listUnique();
+	float computeEnt();
+	void sortSymbolDescend();
+	void sortSymbolAscend();
+	void listSortedDescend();
+	void listSortedAscend();
+};
+
+
+
+#endif	// SYMBOLVECTOR_H
+
+
+/*--------------------symbol vector implementation--------------------*/
+#include"SymbolVector.h"
+#include<iostream>
+#include<fstream>
+#include<algorithm>
+#include<cmath>
+using std::noskipws;
+using std::cout;
+using std::endl;
+using std::sort;
+using std::ios;
+
+bool compareByCountDescend(const Sym &sym_a, const Sym &sym_b)
+{
+	return (sym_a->count > sym_b->count);
+}
+
+bool compareByCountAscend(const Sym &sym_a, const Sym &sym_b)
+{
+	return (sym_a->count < sym_b->count);
+}
+
+void SymbolVector::loadRawData(string fileName)
+{
+	inFile.open(fileName, ios::binary);
+	unsigned char temp;
+	while (inFile >> noskipws >> temp) {
+		rawData.push_back(temp);
+	}
+	inFile.close();
+}
+
+void SymbolVector::printFile()
+{
+	for (int i = 0; i < rawData.size(); ++i)
+		cout << rawData[i];
+	cout << endl;
+}
+
+void SymbolVector::findUnique()
+{
+	for (long i = 0; i < rawData.size(); ++i) {
+		int j;
+		// bool existSymbol = false;
+		for (j = 0; j < symbol_in_data.size(); ++j) {
+			if (symbol_in_data[j]->value == rawData[i] && !symbol_in_data[j]->isHead) {
+				++symbol_in_data[j]->count;
+				// existSymbol = true;
+				break;
+			}
+		}
+		if (j == symbol_in_data.size()) {
+			symbol_in_data.push_back(new Symbol(rawData[i], 1, 0, false));
+			// symbol_in_data[j]->value = rawData[i];
+			// symbol_in_data[j]->count = 1;
+		}
+	}
+
+	computeFreq();
+}
+
+void SymbolVector::listUnique()
+{
+	for (int i = 1; i < symbol_in_data.size(); ++i) {
+		cout << symbol_in_data[i]->value << '\t'
+			<< symbol_in_data[i]->count << '\t'
+			<< symbol_in_data[i]->relativeFreq << endl;
+	}
+}
+
+int SymbolVector::getNumUnique()
+{
+	return symbol_in_data.size() - 1;
+}
+
+int SymbolVector::getNumTotal()
+{
+	return rawData.size();
+}
+
+float SymbolVector::computeEnt()
+{
+	float entropy = 0;
+	for (int i = 1; i < symbol_in_data.size(); ++i) {
+		entropy -= symbol_in_data[i]->relativeFreq * log2(symbol_in_data[i]->relativeFreq);
+	}
+	return entropy;
+}
+
+void SymbolVector::sortSymbolDescend()
+{
+	sortedSymbolDescend.assign(symbol_in_data.begin(), symbol_in_data.end());
+	sort(sortedSymbolDescend.begin() + 1, sortedSymbolDescend.end(), compareByCountDescend);
+}
+
+void SymbolVector::sortSymbolAscend()
+{
+	sortedSymbolAscend.assign(symbol_in_data.begin(), symbol_in_data.end());
+	sort(sortedSymbolAscend.begin() + 1, sortedSymbolAscend.end(), compareByCountAscend);
+}
+
+void SymbolVector::listSortedDescend()
+{
+	for (int i = 1; i < sortedSymbolDescend.size(); ++i) {
+		cout << sortedSymbolDescend[i]->value << '\t'
+			<< sortedSymbolDescend[i]->count << '\t'
+			<< sortedSymbolDescend[i]->relativeFreq << endl;
+	}
+}
+
+void SymbolVector::listSortedAscend()
+{
+	for (int i = 1; i < sortedSymbolAscend.size(); ++i) {
+		cout << sortedSymbolAscend[i]->value << '\t'
+			<< sortedSymbolAscend[i]->count << '\t'
+			<< sortedSymbolAscend[i]->relativeFreq << endl;
+	}
+}
+
+
+/*--------------------Shannon-Fano encoder header--------------------*/
+#ifndef SHANNONFANOENCODER_H
+#define SHANNONFANOENCODER_H
+
+#include"SymbolVector.h"
+#include"BinaryTree.h"
+#include<vector>
+#include<string>
+#include<fstream>
+#include<list>
+#include<bitset>
+using std::list;
+using std::string;
+using std::vector;
+using std::ofstream;
+using std::bitset;
+
+typedef struct SFCodeWord{
+	unsigned char symbol;
+	int decIndex;			// code word index in decimal
+	string binCode;			// a string representation of code word
+	float relativeFreq;
+	SFCodeWord() : symbol('\0'), binCode("0"), relativeFreq(0) {}
+}*SFCW;
+
+class ShannonFanoEncoder : public SymbolVector, public BinaryTree
+{
+protected:
+	string dec2binEncode(int);
+	int bin2dec(list<unsigned char>);
+	ofstream outFile;
+public:
+	vector<SFCW> SFCodeTable;	// the table storing the symbol - code pairs
+	ShannonFanoEncoder() {
+		SFCodeTable.push_back(new SFCodeWord);
+		nodeVector.push_back(new treeNode(1, '\0', 1, 0, 0, 0));
+	}
+	void buildSFTree(int, int, float, int);
+	void encodeSF();
+	void printSFCode();
+	float computeAvgLength();
+	void outputSFEncodedFile(string fileName);
+	void outputSFCodeTable(string);
+};
+
+
+
+#endif	// SHANNONFANOENCODER_H
+
+
+/*--------------------Shannon-Fano encoder implementation--------------------*/
+#include"ShannonFanoEncoder.h"
+#include"BinaryTree.h"
+#include"SymbolVector.h"
+#include<iostream>
+#include<fstream>
+#include<bitset>
+#include<cmath>
+#include<list>
+using std::list;
+using std::pow;
+using std::cout;
+using std::cerr;
+using std::endl;
+using std::bitset;
+using std::ios;
+
+string ShannonFanoEncoder::dec2binEncode(int n)
+{
+	vector<bool> binNum;
+	while (n / 2 != 0) {
+		binNum.push_back(n % 2);
+		n /= 2;
+	}
+	binNum.push_back(n % 2);
+
+	string bitString;
+	for (int i = binNum.size(); i > 0; --i) {
+		if (binNum[i - 1])
+			bitString.push_back('1');
+		else
+			bitString.push_back('0');
+	}
+
+	return bitString;
+}
+
+int ShannonFanoEncoder::bin2dec(list<unsigned char> buffer)
+{
+	int symbolDec = 0, countDigit = buffer.size() - 1;
+	for (list<unsigned char>::iterator i = buffer.begin(); i != buffer.end(); ++i) {
+		symbolDec += int((*i) == '1') * pow(2, countDigit--);
+	}
+
+	return symbolDec;
+}
+
+void ShannonFanoEncoder::buildSFTree(int start, int end, float maxFreq, int currentNode)
+{
+	if (start >= end)
+		cerr << "Error! No symbol input." << endl;
+	else if (start == end - 1) {
+		assignValue(currentNode, sortedSymbolDescend[end]->value, sortedSymbolDescend[end]->relativeFreq);
+	}
+	else {
+		splitNode(currentNode);
+
+		float sumFreq = 0;
+		int i = start, separateIdx;
+		while (sumFreq < maxFreq / 2 && i < end - 1) {
+			sumFreq += sortedSymbolDescend[i + 1]->relativeFreq;
+			++i;
+		}
+
+		if ((sumFreq < maxFreq / 2) ||
+			((sumFreq - maxFreq / 2) < (maxFreq / 2 - sumFreq + sortedSymbolDescend[i]->relativeFreq))) {
+			separateIdx = i;
+		}
+		else {
+			separateIdx = i - 1;
+			sumFreq -= sortedSymbolDescend[i]->relativeFreq;
+		}
+
+		buildSFTree(start, separateIdx, sumFreq, 2 * currentNode);
+		buildSFTree(separateIdx, end, maxFreq - sumFreq, 2 * currentNode + 1);
+	}
+}
+
+void ShannonFanoEncoder::encodeSF()
+{
+	for (int i = 1; i < nodeVector.size(); ++i) {
+		if (nodeVector[i]->relativeFreq > 0 && nodeVector[i]->relativeFreq < 1) {
+			SFCodeTable.push_back(new SFCodeWord);
+			SFCodeTable.back()->symbol = nodeVector[i]->attribute;
+			SFCodeTable.back()->relativeFreq = nodeVector[i]->relativeFreq;
+			SFCodeTable.back()->decIndex = nodeVector[i]->index;
+			SFCodeTable.back()->binCode = dec2binEncode(nodeVector[i]->index).erase(0, 1);
+		}
+	}
+}
+
+void ShannonFanoEncoder::printSFCode()
+{
+	for (int i = 1; i < SFCodeTable.size(); ++i) {
+		cout << i << '\t' << SFCodeTable[i]->symbol <<
+			'\t' << SFCodeTable[i]->binCode << endl;
+	}
+}
+
+float ShannonFanoEncoder::computeAvgLength()
+{
+	float Bavg = 0;
+	for (int i = 1; i < SFCodeTable.size(); ++i) {
+		Bavg += SFCodeTable[i]->binCode.size() * SFCodeTable[i]->relativeFreq;
+	}
+	return Bavg;
+}
+
+void ShannonFanoEncoder::outputSFEncodedFile(string fileName)
+{
+	outFile.open(fileName, ios::binary);
+	string tempEncodedString;
+	list<unsigned char> outputBuffer;
+	for (long i = 0; i < rawData.size(); ++i) {
+		for (int j = 0; j < SFCodeTable.size(); ++j) {
+			if (rawData[i] == SFCodeTable[j]->symbol) {
+				tempEncodedString.append(SFCodeTable[j]->binCode);
+				// cout << SFCodeTable[j]->binCode;
+			}
+		}
+	}
+	// cout << endl;
+	
+	for (long i = 0; i < tempEncodedString.size(); ++i) {
+		if (i == 0) {
+			outputBuffer.push_back(tempEncodedString[i]);
+		}
+		else if (i == tempEncodedString.size() - 1 && i % 8 != 0) {
+			outputBuffer.push_back(tempEncodedString[i]);
+			outFile << unsigned char(bin2dec(outputBuffer));
+		}
+		else if (i % 8 == 0 && i != 0) {
+			outFile << unsigned char(bin2dec(outputBuffer));
+			outputBuffer.clear();
+			outputBuffer.push_back(tempEncodedString[i]);
+		}
+		else {
+			outputBuffer.push_back(tempEncodedString[i]);
+		}
+	}
+
+	outFile.close();
+}
+
+void ShannonFanoEncoder::outputSFCodeTable(string fileName)
+{
+	outFile.open(fileName, ios::binary);
+	for (int i = 0; i < SFCodeTable.size(); ++i) {
+		outFile << SFCodeTable[i]->symbol << '\t'
+			<< SFCodeTable[i]->binCode << '\n';
+	}
+	outFile.close();
+}
+
+
+/*--------------------Shannon-Fano decoder header---------------------*/
+#ifndef SHANNONFANODECODER_H
+#define SHANNONFANODECODER_H
+
+#include"ShannonFanoEncoder.h"
+
+class ShannonFanoDecoder : public ShannonFanoEncoder
+{
+private:
+	ifstream readEncodedFile;
+	string dec2binDecode(int n);
+public:
+	void outputSFDecodedFile(string inFileName, string outFileName);
+};
+
+
+#endif	// SHANNONFANODECODER
+
+
+/*--------------------Shannon-Fano decoder implementation--------------------*/
+#include"ShannonFanoEncoder.h"
+#include"ShannonFanoDecoder.h"
+#include"BinaryTree.h"
+#include"SymbolVector.h"
+using std::noskipws;
+using std::ios;
+
+string ShannonFanoDecoder::dec2binDecode(int n)
+{
+	vector<bool> binNum;
+	while (n / 2 != 0) {
+		binNum.push_back(n % 2);
+		n /= 2;
+	}
+	binNum.push_back(n % 2);
+	
+	if (binNum.size() < 8) {
+	for (int i = binNum.size(); i < 8; ++i)
+	binNum.push_back(0);
+	}
+
+	string bitString;
+	for (int i = binNum.size(); i > 0; --i) {
+		if (binNum[i - 1])
+			bitString.push_back('1');
+		else
+			bitString.push_back('0');
+	}
+
+	return bitString;
+}
+
+void ShannonFanoDecoder::outputSFDecodedFile(string inFileName, string outFileName)
+{
+	// bug for decoding last character
+	readEncodedFile.open(inFileName, ios::binary);
+	string tempDecodedString, decodeBuffer;
+	vector<unsigned char> tempCharVector;
+	unsigned char readNext;
+	while (readEncodedFile >> noskipws >> readNext) {
+		tempCharVector.push_back(readNext);
+	}
+	readEncodedFile.close();
+
+	for (int i = 0; i < tempCharVector.size(); ++i) {
+		if (i != tempCharVector.size() - 1) {
+			tempDecodedString.append(dec2binDecode(int(tempCharVector[i])));
+		}
+		else
+			tempDecodedString.append(dec2binEncode(int(tempCharVector[i])));
+	}
+
+	outFile.open(outFileName, ios::binary);
+	for (int i = 0; i < tempDecodedString.size(); ++i) {
+		decodeBuffer.push_back(tempDecodedString[i]);
+		for (int j = 1; j < SFCodeTable.size(); ++j) {
+			if (SFCodeTable[j]->binCode == decodeBuffer) {
+				outFile << SFCodeTable[j]->symbol;
+				decodeBuffer.clear();
+				break;
+			}
+		}
+	}
+	outFile.close();
+}
+
+
+/*--------------------Huffman encoder header--------------------*/
+#ifndef HUFFMANENCODER_H
+#define HUFFMANENCODER_H
+
+#include"SymbolVector.h"
+#include"BinaryTree.h"
+#include<string>
+#include<vector>
+#include<list>
+#include<fstream>
+using std::ofstream;
+using std::string;
+using std::vector;
+using std::list;
+
+typedef struct HMCodeWord {
+	unsigned char symbol;
+	string binCode;
+	float relativeFreq;
+	HMCodeWord() : symbol('\0'), binCode("0"), relativeFreq(0) {}
+	HMCodeWord(unsigned char s, float f) : symbol(s), relativeFreq(f) {}
+}*HMCW;
+
+class HuffmanEncoder : public SymbolVector, public BinaryTree
+{
+protected:
+	list<Node> activeNodeList;
+	ofstream outFile;
+	int bin2dec(list<unsigned char>);
+public:
+	vector<HMCW> HMCodeTable;
+	HuffmanEncoder() {
+		HMCodeTable.push_back(new HMCodeWord);
+		nodeList = new treeNode(0, '\0', 0, 0, 0, 0);
+		nodeVector.push_back(new treeNode(0, '\0', 0, 0, 0, 0));
+	}
+	void initialActiveList();
+	bool isEmpty();
+	void printActiveList();
+	void buildHMTree();
+	void encodeHM();
+	void printHMCode();
+	float computeAvgLength();
+	void outputHMEncodedFile(string fileName);
+};
+
+
+#endif	// HUFFMANENCODER_H
+
+
+/*---------------------Huffman encoder implementation--------------------*/
+#include"HuffmanEncoder.h"
+#include"SymbolVector.h"
+#include"BinaryTree.h"
+#include<algorithm>
+#include<list>
+#include<iostream>
+using std::list;
+using std::iterator;
+using std::cout;
+using std::endl;
+using std::sort;
+using std::ios;
+
+int HuffmanEncoder::bin2dec(list<unsigned char> buffer)
+{
+	int symbolDec = 0, countDigit = buffer.size() - 1;
+	for (list<unsigned char>::iterator i = buffer.begin(); i != buffer.end(); ++i) {
+		symbolDec += int((*i) == '1') * pow(2, countDigit--);
+	}
+
+	return symbolDec;
+}
+
+
+bool compareByFreqAscend(const Node& node_a, const Node& node_b)
+{
+	return (node_a->relativeFreq < node_b->relativeFreq);
+}
+
+bool compareByCodeLength(const HMCW& codeword_a, const HMCW& codeword_b)
+{
+	return (codeword_a->binCode.size() < codeword_b->binCode.size());
+}
+
+void HuffmanEncoder::initialActiveList()
+{
+	for (int i = 1; i < sortedSymbolAscend.size(); ++i) {
+		activeNodeList.push_back(new treeNode(
+			sortedSymbolAscend[i]->value, sortedSymbolAscend[i]->relativeFreq, true));
+	}
+}
+
+bool HuffmanEncoder::isEmpty()
+{
+	return activeNodeList.empty();
+}
+
+void HuffmanEncoder::printActiveList()
+{
+	list<Node>::iterator i;
+	for (i = activeNodeList.begin(); i != activeNodeList.end(); ++i) {
+		if ((*i)->attribute != '\0')
+			cout << (*i)->attribute << '\t' << (*i)->relativeFreq << endl;
+	}
+}
+
+void HuffmanEncoder::buildHMTree()
+{
+	Node tempNode1, tempNode2;
+	while (nodeList->relativeFreq < 1) {
+		tempNode1 = activeNodeList.front();
+		activeNodeList.pop_front();
+		tempNode2 = activeNodeList.front();
+		activeNodeList.pop_front();
+
+		nodeList = mergeNode(tempNode1, tempNode2);
+		nodeList->left_child->index = 0;
+		nodeList->right_child->index = 1;
+		nodeVector.push_back(tempNode1);
+		nodeVector.push_back(tempNode2);
+
+		activeNodeList.push_front(nodeList);
+		activeNodeList.sort(compareByFreqAscend);
+	}
+}
+
+void HuffmanEncoder::encodeHM()
+{
+	Node tempNode;
+	list<int> tempCode;
+	int countSymbol = 0;
+	for (int i = 1; i < nodeVector.size(); ++i) {
+		if (nodeVector[i]->isLeaf) {
+			++countSymbol;		
+			tempCode.clear();
+			HMCodeTable.push_back(new HMCodeWord(nodeVector[i]->attribute, nodeVector[i]->relativeFreq));
+			tempNode = nodeVector[i];
+			while (tempNode->parent != 0) {
+				tempCode.push_front(tempNode->index);
+				tempNode = tempNode->parent;
+			}
+			for (list<int>::iterator j = tempCode.begin(); j != tempCode.end(); ++j) {
+				if ((*j) == 1)
+					HMCodeTable[countSymbol]->binCode.push_back('1');
+				else HMCodeTable[countSymbol]->binCode.push_back('0');
+			}
+		}
+	}
+	sort(HMCodeTable.begin() + 1, HMCodeTable.end(), compareByCodeLength);
+}
+
+void HuffmanEncoder::printHMCode()
+{
+	for (int i = 1; i < HMCodeTable.size(); ++i) {
+		cout << i << '\t' << HMCodeTable[i]->symbol <<
+			'\t' << HMCodeTable[i]->binCode << endl;
+	}
+}
+
+float HuffmanEncoder::computeAvgLength()
+{
+	float Bavg = 0;
+	for (int i = 1; i < HMCodeTable.size(); ++i) {
+		Bavg += HMCodeTable[i]->binCode.size() * HMCodeTable[i]->relativeFreq;
+	}
+	return Bavg;
+}
+
+void HuffmanEncoder::outputHMEncodedFile(string fileName)
+{
+	outFile.open(fileName, ios::binary);
+	string tempEncodedString;
+	list<unsigned char> outputBuffer;
+	for (int i = 0; i < rawData.size(); ++i) {
+		for (int j = 0; j < HMCodeTable.size(); ++j) {
+			if (rawData[i] == HMCodeTable[j]->symbol) {
+				tempEncodedString.append(HMCodeTable[j]->binCode);
+				// cout << HMCodeTable[j]->binCode;
+			}
+		}
+	}
+	// cout << endl;
+
+	for (int i = 0; i < tempEncodedString.size(); ++i) {
+		if (i == 0) {
+			outputBuffer.push_back(tempEncodedString[i]);
+		}
+		else if (i == tempEncodedString.size() - 1 && i % 8 != 0) {
+			outputBuffer.push_back(tempEncodedString[i]);
+			outFile << unsigned char(bin2dec(outputBuffer));
+		}
+		else if (i % 8 == 0 && i != 0) {
+			outFile << unsigned char(bin2dec(outputBuffer));
+			outputBuffer.clear();
+			outputBuffer.push_back(tempEncodedString[i]);
+		}
+		else {
+			outputBuffer.push_back(tempEncodedString[i]);
+		}
+	}
+
+	outFile.close();
+}
+
+
+/*--------------------Huffman decoder header--------------------*/
+#ifndef HUFFMANDECODER_H
+#define HUFFMANDECODER_H
+
+#include"HuffmanEncoder.h"
+
+class HuffmanDecoder : public HuffmanEncoder
+{
+private:
+	ifstream readEncodedFile;
+	string dec2binDecode(int);
+public:
+	void outputHMDecodedFile(string inFileName, string outFileName);
+};
+
+#endif	// HUFFMANDECODER_H
+
+
+/*--------------------Huffman decoder implementation--------------------*/
+#include"HuffmanDecoder.h"
+using std::noskipws;
+using std::ios;
+
+string dec2binEncode(int n)
+{
+	vector<bool> binNum;
+	while (n / 2 != 0) {
+		binNum.push_back(n % 2);
+		n /= 2;
+	}
+	binNum.push_back(n % 2);
+
+	string bitString;
+	for (int i = binNum.size(); i > 0; --i) {
+		if (binNum[i - 1])
+			bitString.push_back('1');
+		else
+			bitString.push_back('0');
+	}
+
+	return bitString;
+}
+
+string HuffmanDecoder::dec2binDecode(int n)
+{
+	vector<bool> binNum;
+	while (n / 2 != 0) {
+		binNum.push_back(n % 2);
+		n /= 2;
+	}
+	binNum.push_back(n % 2);
+
+	if (binNum.size() < 8) {
+		for (int i = binNum.size(); i < 8; ++i)
+			binNum.push_back(0);
+	}
+
+	string bitString;
+	for (int i = binNum.size(); i > 0; --i) {
+		if (binNum[i - 1])
+			bitString.push_back('1');
+		else
+			bitString.push_back('0');
+	}
+
+	return bitString;
+}
+
+void HuffmanDecoder::outputHMDecodedFile(string inFileName, string outFileName)
+{
+	readEncodedFile.open(inFileName, ios::binary);
+	string tempDecodedString, decodeBuffer;
+	vector<unsigned char> tempCharVector;
+	unsigned char readNext;
+	while (readEncodedFile >> noskipws >> readNext) {
+		tempCharVector.push_back(readNext);
+	}
+	readEncodedFile.close();
+
+	for (int i = 0; i < tempCharVector.size(); ++i) {
+		if (i != tempCharVector.size() - 1) {
+			tempDecodedString.append(dec2binDecode(int(tempCharVector[i])));
+		}
+		else
+			tempDecodedString.append(dec2binEncode(int(tempCharVector[i])));
+	}
+
+	outFile.open(outFileName, ios::binary);
+	for (int i = 0; i < tempDecodedString.size(); ++i) {
+		decodeBuffer.push_back(tempDecodedString[i]);
+		for (int j = 1; j < HMCodeTable.size(); ++j) {
+			if (HMCodeTable[j]->binCode == decodeBuffer) {
+				outFile << HMCodeTable[j]->symbol;
+				decodeBuffer.clear();
+				break;
+			}
+		}
+	}
+	outFile.close();
+}
